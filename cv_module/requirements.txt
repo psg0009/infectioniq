@@ -1,0 +1,27 @@
+# InfectionIQ CV Module Requirements
+
+# Computer Vision
+opencv-python>=4.8.0
+mediapipe>=0.10.0
+numpy>=1.24.0
+
+# Deep Learning
+ultralytics>=8.0.0  # YOLOv8
+torch>=2.0.0
+torchvision>=0.15.0
+onnxruntime>=1.16.0
+
+# Tracking
+filterpy>=1.4.5  # For Kalman filtering
+scipy>=1.11.0
+
+# API Communication
+httpx>=0.25.0
+websockets>=12.0
+
+# Utilities
+python-dotenv>=1.0.0
+pyyaml>=6.0
+
+# Development
+pytest>=7.4.0
