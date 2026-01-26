@@ -28,18 +28,22 @@ logger = logging.getLogger(__name__)
 
 class CVPipeline:
     """Main Computer Vision Pipeline"""
-    
+
     def __init__(
         self,
         camera_source: int = 0,
+        video_path: str = None,
         backend_url: str = "http://localhost:8000",
         case_id: str = None,
-        or_number: str = "OR-1"
+        or_number: str = "OR-1",
+        loop_video: bool = True
     ):
         self.camera_source = camera_source
+        self.video_path = video_path
         self.backend_url = backend_url
         self.case_id = case_id
         self.or_number = or_number
+        self.loop_video = loop_video
         
         # Initialize components
         logger.info("Initializing CV Pipeline components...")
@@ -59,12 +63,19 @@ class CVPipeline:
     
     def run(self):
         """Run the CV pipeline"""
-        
-        logger.info(f"Opening camera source: {self.camera_source}")
-        cap = cv2.VideoCapture(self.camera_source)
-        
+
+        # Determine video source (file or camera)
+        if self.video_path:
+            logger.info(f"Opening video file: {self.video_path}")
+            source = self.video_path
+        else:
+            logger.info(f"Opening camera source: {self.camera_source}")
+            source = self.camera_source
+
+        cap = cv2.VideoCapture(source)
+
         if not cap.isOpened():
-            logger.error("Failed to open camera")
+            logger.error(f"Failed to open video source: {source}")
             return
         
         # Get camera properties
@@ -83,28 +94,50 @@ class CVPipeline:
             while True:
                 ret, frame = cap.read()
                 if not ret:
-                    logger.warning("Failed to read frame")
-                    continue
-                
+                    # If video file ended
+                    if self.video_path:
+                        if self.loop_video:
+                            logger.info("Video ended, looping...")
+                            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                            continue
+                        else:
+                            logger.info("Video ended")
+                            break
+                    else:
+                        logger.warning("Failed to read frame from camera")
+                        continue
+
                 self.frame_count += 1
-                
+
                 # Process frame
                 processed_frame, events = self.process_frame(frame)
-                
-                # Publish events
-                for event in events:
-                    asyncio.run(self.event_publisher.publish(event))
-                
-                # Display frame (for debugging)
-                cv2.imshow("InfectionIQ CV Pipeline", processed_frame)
-                
-                # Check for quit
-                if cv2.waitKey(1) & 0xFF == ord('q'):
+
+                # Publish events (only if case_id is set)
+                if self.case_id and events:
+                    for event in events:
+                        asyncio.run(self.event_publisher.publish(event))
+
+                # Display frame
+                window_title = "InfectionIQ CV Pipeline"
+                if self.video_path:
+                    window_title += f" - {self.video_path.split('/')[-1].split(chr(92))[-1]}"
+                cv2.imshow(window_title, processed_frame)
+
+                # Control playback speed for video files (30 FPS)
+                wait_time = 33 if self.video_path else 1
+
+                # Check for quit (q) or switch video (n)
+                key = cv2.waitKey(wait_time) & 0xFF
+                if key == ord('q'):
                     break
-        
+                elif key == ord('n'):
+                    # Allow switching to next video
+                    logger.info("User requested next video")
+                    break
+
         except KeyboardInterrupt:
             logger.info("Interrupted by user")
-        
+
         finally:
             cap.release()
             cv2.destroyAllWindows()
@@ -318,20 +351,24 @@ class CVPipeline:
 
 def main():
     parser = argparse.ArgumentParser(description="InfectionIQ CV Pipeline")
-    parser.add_argument("--camera", type=int, default=0, help="Camera source")
+    parser.add_argument("--camera", type=int, default=0, help="Camera source index")
+    parser.add_argument("--video", type=str, help="Path to video file (instead of camera)")
+    parser.add_argument("--no-loop", action="store_true", help="Don't loop video file")
     parser.add_argument("--backend", type=str, default="http://localhost:8000", help="Backend URL")
     parser.add_argument("--case-id", type=str, help="Active case ID")
     parser.add_argument("--or", type=str, default="OR-1", dest="or_number", help="OR number")
-    
+
     args = parser.parse_args()
-    
+
     pipeline = CVPipeline(
         camera_source=args.camera,
+        video_path=args.video,
         backend_url=args.backend,
         case_id=args.case_id,
-        or_number=args.or_number
+        or_number=args.or_number,
+        loop_video=not args.no_loop
     )
-    
+
     pipeline.run()
 
 
