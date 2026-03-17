@@ -1,5 +1,23 @@
 // Types for InfectionIQ Frontend
 
+export type UserRole = 'ADMIN' | 'MANAGER' | 'NURSE' | 'SURGEON' | 'TECHNICIAN' | 'VIEWER'
+
+export type SubscriptionTier = 'TRIAL' | 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE'
+
+export interface User {
+  id: string
+  email: string
+  full_name: string
+  role: UserRole
+  subscription_tier: SubscriptionTier
+  max_ors: number
+  is_active: boolean
+  is_superuser: boolean
+  staff_id?: string
+  last_login?: string
+  created_at: string
+}
+
 export type RiskLevel = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL'
 export type PersonState = 'UNKNOWN' | 'CLEAN' | 'POTENTIALLY_CONTAMINATED' | 'CONTAMINATED' | 'DIRTY'
 export type AlertSeverity = 'INFO' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'

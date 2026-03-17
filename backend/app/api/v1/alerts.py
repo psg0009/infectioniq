@@ -2,6 +2,7 @@
 Alerts API Endpoints
 """
 
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -10,7 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.models import Alert
-from app.schemas import AlertResponse, AlertAcknowledgeRequest, AlertSeverity
+from app.schemas import AlertResponse, AlertAcknowledgeRequest
+from app.core.enums import AlertSeverity
 
 router = APIRouter()
 
@@ -24,15 +26,15 @@ async def list_alerts(
 ):
     """List alerts with optional filters"""
     query = select(Alert).order_by(Alert.timestamp.desc()).limit(limit)
-    
+
     if severity:
         query = query.where(Alert.severity == severity)
     if acknowledged is not None:
         query = query.where(Alert.acknowledged == acknowledged)
-    
+
     result = await db.execute(query)
     alerts = result.scalars().all()
-    
+
     return [AlertResponse.model_validate(a) for a in alerts]
 
 
@@ -56,37 +58,33 @@ async def acknowledge_alert(
     db: AsyncSession = Depends(get_db)
 ):
     """Acknowledge an alert"""
-    from datetime import datetime
-    
     result = await db.execute(select(Alert).where(Alert.id == alert_id))
     alert = result.scalar_one_or_none()
-    
+
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
-    
+
     alert.acknowledged = True
     alert.acknowledged_at = datetime.utcnow()
     alert.acknowledged_by = request.acknowledged_by
-    
+
     await db.commit()
-    
+
     return {"status": "acknowledged", "alert_id": str(alert_id)}
 
 
 @router.post("/{alert_id}/resolve")
 async def resolve_alert(alert_id: UUID, db: AsyncSession = Depends(get_db)):
     """Mark an alert as resolved"""
-    from datetime import datetime
-    
     result = await db.execute(select(Alert).where(Alert.id == alert_id))
     alert = result.scalar_one_or_none()
-    
+
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found")
-    
+
     alert.resolved = True
     alert.resolved_at = datetime.utcnow()
-    
+
     await db.commit()
-    
+
     return {"status": "resolved", "alert_id": str(alert_id)}

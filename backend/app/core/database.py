@@ -1,6 +1,6 @@
 """
 Database connection and session management
-SQLite version for development
+Supports SQLite (dev) and PostgreSQL (production)
 """
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -12,16 +12,31 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Convert sqlite:// to sqlite+aiosqlite://
-DATABASE_URL = settings.DATABASE_URL.replace("sqlite://", "sqlite+aiosqlite://")
+# Build async database URL and engine kwargs based on driver
+_raw_url = settings.DATABASE_URL
 
-# Create async engine with SQLite-specific settings
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=settings.DEBUG,
-    connect_args={"check_same_thread": False},
-    poolclass=StaticPool,
-)
+if _raw_url.startswith("sqlite://"):
+    DATABASE_URL = _raw_url.replace("sqlite://", "sqlite+aiosqlite://")
+    _engine_kwargs = {
+        "connect_args": {"check_same_thread": False},
+        "poolclass": StaticPool,
+    }
+elif _raw_url.startswith("postgresql://"):
+    DATABASE_URL = _raw_url.replace("postgresql://", "postgresql+asyncpg://")
+    _engine_kwargs = {
+        "pool_size": settings.DB_POOL_SIZE,
+        "max_overflow": settings.DB_MAX_OVERFLOW,
+        "pool_pre_ping": True,
+    }
+else:
+    DATABASE_URL = _raw_url
+    _engine_kwargs = {
+        "pool_size": settings.DB_POOL_SIZE,
+        "max_overflow": settings.DB_MAX_OVERFLOW,
+        "pool_pre_ping": True,
+    }
+
+engine = create_async_engine(DATABASE_URL, echo=settings.DEBUG, **_engine_kwargs)
 
 # Create async session factory
 async_session_maker = async_sessionmaker(

@@ -2,17 +2,12 @@
 import cv2
 import numpy as np
 from typing import Tuple, Dict
-from enum import Enum
 import logging
 
-logger = logging.getLogger(__name__)
+from src.utils.types import Zone
+from config import DEFAULT_ZONES, ZONE_RISK_LEVELS
 
-class Zone(Enum):
-    DOOR = "DOOR"
-    SANITIZER = "SANITIZER"
-    NON_STERILE = "NON_STERILE"
-    STERILE = "STERILE"
-    CRITICAL = "CRITICAL"
+logger = logging.getLogger(__name__)
 
 class ZoneDetector:
     """Detects which zone a point is in based on configured polygons"""
@@ -21,18 +16,15 @@ class ZoneDetector:
         self.frame_width = frame_width
         self.frame_height = frame_height
         
-        # Default zones (normalized 0-1)
+        # Default zones (normalized 0-1) from config
         self.zones = {
-            Zone.DOOR: np.array([[0.4, 0.85], [0.6, 0.85], [0.6, 1.0], [0.4, 1.0]]),
-            Zone.SANITIZER: np.array([[0.7, 0.8], [0.9, 0.8], [0.9, 1.0], [0.7, 1.0]]),
-            Zone.NON_STERILE: np.array([[0.0, 0.6], [1.0, 0.6], [1.0, 1.0], [0.0, 1.0]]),
-            Zone.STERILE: np.array([[0.1, 0.15], [0.9, 0.15], [0.9, 0.6], [0.1, 0.6]]),
-            Zone.CRITICAL: np.array([[0.25, 0.2], [0.75, 0.2], [0.75, 0.5], [0.25, 0.5]])
+            Zone[name]: np.array(coords)
+            for name, coords in DEFAULT_ZONES.items()
         }
-        
+
         self.zone_risk = {
-            Zone.DOOR: 1, Zone.SANITIZER: 0, Zone.NON_STERILE: 3,
-            Zone.STERILE: 7, Zone.CRITICAL: 10
+            Zone[name]: level
+            for name, level in ZONE_RISK_LEVELS.items()
         }
     
     def _point_in_polygon(self, point: Tuple[float, float], polygon: np.ndarray) -> bool:

@@ -1,0 +1,8 @@
+Method,Name,Error,Occurrences
+GET,/api/v1/staff/,HTTPError('429 Client Error: Too Many Requests for url: /api/v1/staff/'),4
+GET,/api/v1/analytics/dashboard,HTTPError('429 Client Error: Too Many Requests for url: /api/v1/analytics/dashboard'),183
+GET,/api/v1/analytics/trends?days=7,HTTPError('429 Client Error: Too Many Requests for url: /api/v1/analytics/trends?days=7'),65
+GET,/api/v1/auth/me,HTTPError('401 Client Error: Unauthorized for url: /api/v1/auth/me'),11
+GET,/api/v1/alerts/,HTTPError('429 Client Error: Too Many Requests for url: /api/v1/alerts/'),23
+POST,/api/v1/auth/login,"ConnectionResetError(10054, 'An existing connection was forcibly closed by the remote host', None, 10054, None)",11
+POST,/api/v1/auth/register,HTTPError('500 Server Error: Internal Server Error for url: /api/v1/auth/register'),11

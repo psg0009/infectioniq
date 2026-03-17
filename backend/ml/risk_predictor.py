@@ -164,11 +164,11 @@ class RiskPredictor:
     ) -> Dict[str, Any]:
         """Format prediction result"""
         # Determine risk level
-        if score < 25:
+        if score <= 25:
             risk_level = "LOW"
-        elif score < 50:
+        elif score <= 50:
             risk_level = "MODERATE"
-        elif score < 75:
+        elif score <= 75:
             risk_level = "HIGH"
         else:
             risk_level = "CRITICAL"

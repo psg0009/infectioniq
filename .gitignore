@@ -38,3 +38,15 @@ logs/
 # Coverage
 htmlcov/
 .coverage
+
+# Test cache
+.pytest_cache/
+
+# Environment
+.env.local
+backend/.env
+
+# SSL certificates (never commit)
+ssl/*.pem
+ssl/*.key
+ssl/*.crt

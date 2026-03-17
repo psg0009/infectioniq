@@ -5,13 +5,14 @@ Analytics API Endpoints
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import select, func
+from sqlalchemy import select, func, Integer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.enums import CaseStatus
 from app.models import (
     SurgicalCase, EntryExitEvent, TouchEvent, Alert,
-    Dispenser, DispenserStatus, CaseStatus
+    Dispenser, DispenserStatus
 )
 from app.schemas import DashboardMetricsResponse
 
@@ -21,16 +22,16 @@ router = APIRouter()
 @router.get("/dashboard", response_model=DashboardMetricsResponse)
 async def get_dashboard_metrics(db: AsyncSession = Depends(get_db)):
     """Get dashboard overview metrics"""
-    
+
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    
+
     # Active cases
     active_result = await db.execute(
         select(func.count(SurgicalCase.id))
         .where(SurgicalCase.status == CaseStatus.IN_PROGRESS)
     )
     active_cases = active_result.scalar() or 0
-    
+
     # Today's entries
     entries_result = await db.execute(
         select(
@@ -44,10 +45,10 @@ async def get_dashboard_metrics(db: AsyncSession = Depends(get_db)):
     today_entries = entries_data.total or 0
     today_compliant = entries_data.compliant or 0
     today_violations = today_entries - today_compliant
-    
+
     # Compliance rate
     compliance_rate = today_compliant / today_entries if today_entries > 0 else 1.0
-    
+
     # Active alerts
     alerts_result = await db.execute(
         select(func.count(Alert.id))
@@ -55,7 +56,7 @@ async def get_dashboard_metrics(db: AsyncSession = Depends(get_db)):
         .where(Alert.resolved == False)
     )
     active_alerts = alerts_result.scalar() or 0
-    
+
     # Critical alerts
     critical_result = await db.execute(
         select(func.count(Alert.id))
@@ -64,14 +65,14 @@ async def get_dashboard_metrics(db: AsyncSession = Depends(get_db)):
         .where(Alert.severity == "CRITICAL")
     )
     critical_alerts = critical_result.scalar() or 0
-    
+
     # Low dispensers
     dispensers_result = await db.execute(
         select(func.count(DispenserStatus.dispenser_id))
         .where(DispenserStatus.status.in_(["WARNING", "LOW", "CRITICAL", "EMPTY"]))
     )
     dispensers_low = dispensers_result.scalar() or 0
-    
+
     return DashboardMetricsResponse(
         active_cases=active_cases,
         overall_compliance_rate=compliance_rate,
@@ -89,10 +90,9 @@ async def get_compliance_trends(
     db: AsyncSession = Depends(get_db)
 ):
     """Get compliance trends over time"""
-    
+
     start_date = datetime.utcnow() - timedelta(days=days)
-    
-    # This would be optimized with a pre-aggregated table in production
+
     result = await db.execute(
         select(
             func.date(EntryExitEvent.timestamp).label("date"),
@@ -104,17 +104,18 @@ async def get_compliance_trends(
         .group_by(func.date(EntryExitEvent.timestamp))
         .order_by(func.date(EntryExitEvent.timestamp))
     )
-    
+
     trends = []
     for row in result:
         compliance_rate = row.compliant / row.total if row.total > 0 else 1.0
+        date_val = row.date
         trends.append({
-            "date": row.date.isoformat(),
+            "date": date_val.isoformat() if hasattr(date_val, "isoformat") else str(date_val),
             "compliance_rate": compliance_rate,
             "total_entries": row.total,
             "compliant_entries": row.compliant
         })
-    
+
     return {"trends": trends, "days": days}
 
 
@@ -124,9 +125,9 @@ async def get_top_violations(
     db: AsyncSession = Depends(get_db)
 ):
     """Get most common violation types"""
-    
+
     start_date = datetime.utcnow() - timedelta(days=days)
-    
+
     result = await db.execute(
         select(
             Alert.alert_type,
@@ -136,7 +137,7 @@ async def get_top_violations(
         .group_by(Alert.alert_type)
         .order_by(func.count(Alert.id).desc())
     )
-    
+
     violations = []
     total = 0
     for row in result:
@@ -145,13 +146,9 @@ async def get_top_violations(
             "count": row.count
         })
         total += row.count
-    
+
     # Add percentage
     for v in violations:
         v["percentage"] = (v["count"] / total * 100) if total > 0 else 0
-    
+
     return {"violations": violations, "total": total}
-
-
-# Import for type annotation
-from sqlalchemy import Integer

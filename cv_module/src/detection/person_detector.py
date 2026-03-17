@@ -5,6 +5,9 @@ from dataclasses import dataclass
 from typing import List, Tuple
 import logging
 
+from src.utils.math_utils import euclidean_distance
+from config import PERSON_MAX_TRACK_DISTANCE_PX
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -137,9 +140,9 @@ class PersonDetector:
             px1, py1, px2, py2 = prev.bbox
             prev_center = ((px1 + px2) // 2, (py1 + py2) // 2)
 
-            dist = np.sqrt((center[0] - prev_center[0])**2 + (center[1] - prev_center[1])**2)
+            dist = euclidean_distance(center, prev_center)
 
-            if dist < min_dist and dist < 100:  # Max 100 pixels movement
+            if dist < min_dist and dist < PERSON_MAX_TRACK_DISTANCE_PX:
                 min_dist = dist
                 matched_id = prev.track_id
 

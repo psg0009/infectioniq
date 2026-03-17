@@ -1,0 +1,116 @@
+\documentclass[11pt,a4paper]{article}
+
+% Packages
+\usepackage[margin=0.6in]{geometry}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{fontenc}
+\usepackage{helvet}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{parskip}
+
+% Colors
+\definecolor{primary}{HTML}{1A5276}
+\definecolor{accent}{HTML}{2E86C1}
+\definecolor{darkgray}{HTML}{2C3E50}
+\definecolor{lightgray}{HTML}{F2F3F4}
+
+% Font
+\renewcommand{\familydefault}{\sfdefault}
+
+% Section formatting
+\titleformat{\section}{\large\bfseries\color{primary}}{}{0em}{}[\color{accent}\titlerule]
+\titlespacing{\section}{0pt}{10pt}{5pt}
+
+% Remove page number
+\pagestyle{empty}
+
+% Hyperlink style
+\hypersetup{
+    colorlinks=true,
+    linkcolor=accent,
+    urlcolor=accent
+}
+
+\begin{document}
+
+% Header
+\begin{center}
+    {\LARGE\bfseries\color{primary} InfectionIQ}\\[4pt]
+    {\large\color{darkgray} AI-Powered Surgical Infection Prevention}\\[3pt]
+    {\small\color{darkgray} \textit{``We predict surgical infections before they happen by tracking contamination pathways in real time.''}}
+\end{center}
+
+\vspace{-2pt}
+
+% Problem
+\section{The Problem}
+
+Hospital-acquired infections (HAIs) affect \textbf{1 in 31} U.S. patients and cost \textbf{\$28{-}45B annually}. Hand hygiene is the single most effective prevention method, yet compliance rates average just \textbf{40{-}60\%}. Current monitoring relies on self-reporting and manual audits, which are unreliable, retroactive, and impossible to scale.
+
+% Solution
+\section{Our Solution}
+
+InfectionIQ is a \textbf{real-time computer vision system} that predicts surgical site infections before they happen by tracking contamination pathways during procedures.
+
+\begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+    \item \textbf{Vision-only monitoring}: No badges, wearables, or additional hardware. Works with existing camera infrastructure.
+    \item \textbf{Real-time detection}: Tracks whether staff sanitize before and after patient contact using CV (YOLOv8, MediaPipe).
+    \item \textbf{ML-powered risk prediction}: Ensemble models (XGBoost, LightGBM, CatBoost) predict infection risk before surgery begins.
+    \item \textbf{Automated alerts and compliance analytics}: Instant notifications and audit-ready dashboards for hospital administrators.
+\end{itemize}
+
+% Market
+\section{Market Opportunity}
+
+\begin{tabularx}{\textwidth}{X X}
+    \textbf{Target Market} & \textbf{Revenue Model} \\[3pt]
+    \small 6,000+ U.S. hospitals (100+ beds) & \small SaaS: \$50K{-}150K/year per facility \\
+    \small 5,700+ ambulatory surgery centers & \small 1{-}2\% penetration = \$30{-}180M ARR \\
+    \small 15,000+ nursing homes (expansion) & \small Upsell: OR analytics, training insights, insurance risk scoring \\
+\end{tabularx}
+
+% Defensibility
+\section{Scalability and Defensibility}
+
+\begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+    \item \textbf{Zero hardware dependency}: Software-first, deploys on existing infrastructure.
+    \item \textbf{Compounding data moat}: Proprietary ML models improve with every facility deployment.
+    \item \textbf{Regulatory complexity}: HIPAA and Joint Commission standards create a natural barrier to entry.
+    \item \textbf{Expansion path}: Ambulatory surgery centers, nursing homes, long-term care, and international markets.
+\end{itemize}
+
+% Traction
+\section{Traction and Early PMF Signals}
+
+\begin{itemize}[leftmargin=1.2em, itemsep=2pt]
+    \item Working \textbf{live demo}: Real-time CV detection, ML risk scoring, and compliance dashboard.
+    \item \textbf{Medical advisor} onboarded.
+    \item Consulting with a \textbf{USC professor} with domain expertise on adoption challenges in healthcare.
+    \item Active conversations with \textbf{Type One Ventures} and \textbf{Ethosion Capital Partners}.
+\end{itemize}
+
+% Team
+\section{Team}
+
+\textbf{3-person technical team} out of the University of Southern California, M.S. in Computer Science (AI). Built the entire system end-to-end: CV pipeline, ML ensemble, full-stack dashboard, and real-time API.
+
+InfectionIQ was inspired by a \textbf{personal family experience} with surgical infection. This is not an academic exercise; it is personal conviction backed by technical depth.
+
+% Ask
+\section{The Ask}
+
+Currently preparing for our \textbf{pre-seed round} to accelerate development, pursue pilot partnerships with hospitals, and bring InfectionIQ to market.
+
+\vfill
+
+\begin{center}
+    \small\color{darkgray}
+    \textbf{Parth Gosar} $\mid$ M.S. Computer Science (AI), USC $\mid$ \href{https://psg.bio}{psg.bio}
+\end{center}
+
+\end{document}

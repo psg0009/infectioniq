@@ -5,13 +5,13 @@ Risk Prediction Service - ML-based infection risk scoring
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from uuid import UUID
-from sqlalchemy import select, func
+from sqlalchemy import select, func, Integer
 from sqlalchemy.ext.asyncio import AsyncSession
 import numpy as np
 import logging
 
 from app.models import SurgicalCase, Staff, Team, EntryExitEvent, InfectionOutcome
-from app.schemas import RiskLevel
+from app.core.enums import RiskLevel
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -364,7 +364,3 @@ class RiskService:
         recommendations = list(dict.fromkeys(recommendations))
         
         return recommendations[:5]  # Return top 5 recommendations
-
-
-# Import for type annotation (avoiding circular import)
-from sqlalchemy import Integer

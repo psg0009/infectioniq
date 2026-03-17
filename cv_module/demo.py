@@ -37,10 +37,12 @@ def get_active_case_id():
 def run_demo():
     """Run demo with both videos sequentially"""
 
-    # Video files
+    # Video files (resolve relative to this script's directory)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
     videos = [
-        ("../sanatized.mp4", "Compliant - Person Sanitizes"),
-        ("../skip santization.mp4", "Non-Compliant - Person Skips Sanitizer")
+        (os.path.join(project_root, "sanatized.mp4"), "Compliant - Person Sanitizes"),
+        (os.path.join(project_root, "skip santization.mp4"), "Non-Compliant - Person Skips Sanitizer")
     ]
 
     print("\n" + "="*60)

@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import logging
 
 from app.models import EntryExitEvent, TouchEvent, Alert, SurgicalCase
-from app.models.models import PersonState, Zone, AlertType, AlertSeverity
+from app.core.enums import PersonState, Zone, AlertType, AlertSeverity
 from app.schemas import (
     EntryEventCreate, TouchEventCreate, 
     EntryExitEventResponse, TouchEventWithStateResponse,
@@ -310,9 +310,14 @@ class ComplianceService:
             "duration_sec": duration_sec
         }
     
+    # NOTE: State machine logic intentionally duplicated between backend and CV module.
+    # Backend is the authoritative source of truth (persists to DB, generates alerts).
+    # CV module (contamination_fsm.py) runs a simplified version locally for real-time
+    # visualization without network latency. They share the same enum definitions
+    # via core/enums.py (backend) and utils/types.py (CV module).
     async def _process_touch_state_change(
-        self, 
-        current_state: PersonState, 
+        self,
+        current_state: PersonState,
         zone: Zone, 
         surface: Optional[str],
         case_id: UUID
@@ -395,12 +400,5 @@ class ComplianceService:
         return new_state, alert
     
     def _get_zone_risk_level(self, zone: Zone) -> int:
-        """Get risk level for a zone"""
-        risk_levels = {
-            Zone.CRITICAL: 10,
-            Zone.STERILE: 7,
-            Zone.NON_STERILE: 3,
-            Zone.SANITIZER: 0,
-            Zone.DOOR: 1
-        }
-        return risk_levels.get(zone, 5)
+        """Get risk level for a zone (from centralized config)"""
+        return settings.ZONE_RISK_LEVELS.get(zone.value, 5)

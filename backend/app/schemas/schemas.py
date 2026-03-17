@@ -5,76 +5,11 @@ Pydantic Schemas for API Request/Response Validation
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, UUID4
-from enum import Enum
 
-
-# =============================================================================
-# ENUMS
-# =============================================================================
-
-class StaffRole(str, Enum):
-    SURGEON = "SURGEON"
-    NURSE = "NURSE"
-    TECH = "TECH"
-    ANESTHESIOLOGIST = "ANESTHESIOLOGIST"
-    RESIDENT = "RESIDENT"
-    OTHER = "OTHER"
-
-
-class WoundClass(str, Enum):
-    CLEAN = "CLEAN"
-    CLEAN_CONTAMINATED = "CLEAN_CONTAMINATED"
-    CONTAMINATED = "CONTAMINATED"
-    DIRTY = "DIRTY"
-    UNKNOWN = "UNKNOWN"
-
-
-class CaseStatus(str, Enum):
-    SCHEDULED = "SCHEDULED"
-    IN_PROGRESS = "IN_PROGRESS"
-    COMPLETED = "COMPLETED"
-    CANCELLED = "CANCELLED"
-
-
-class RiskLevel(str, Enum):
-    LOW = "LOW"
-    MODERATE = "MODERATE"
-    HIGH = "HIGH"
-    CRITICAL = "CRITICAL"
-
-
-class Zone(str, Enum):
-    CRITICAL = "CRITICAL"
-    STERILE = "STERILE"
-    NON_STERILE = "NON_STERILE"
-    SANITIZER = "SANITIZER"
-    DOOR = "DOOR"
-
-
-class PersonState(str, Enum):
-    UNKNOWN = "UNKNOWN"
-    CLEAN = "CLEAN"
-    POTENTIALLY_CONTAMINATED = "POTENTIALLY_CONTAMINATED"
-    CONTAMINATED = "CONTAMINATED"
-    DIRTY = "DIRTY"
-
-
-class AlertType(str, Enum):
-    CONTAMINATION = "CONTAMINATION"
-    MISSED_HYGIENE = "MISSED_HYGIENE"
-    HIGH_RISK = "HIGH_RISK"
-    CRITICAL_ZONE = "CRITICAL_ZONE"
-    DISPENSER_LOW = "DISPENSER_LOW"
-    DISPENSER_EMPTY = "DISPENSER_EMPTY"
-    EXPIRED_SANITIZER = "EXPIRED_SANITIZER"
-
-
-class AlertSeverity(str, Enum):
-    INFO = "INFO"
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
-    CRITICAL = "CRITICAL"
+from app.core.enums import (
+    StaffRole, WoundClass, CaseStatus, RiskLevel,
+    Zone, PersonState, AlertType, AlertSeverity
+)
 
 
 # =============================================================================
@@ -185,9 +120,11 @@ class CaseUpdate(BaseModel):
 
 
 class RiskScoreResponse(BaseSchema):
+    model_config = {"protected_namespaces": ()}
+
     score: int = Field(..., ge=0, le=100)
     risk_level: RiskLevel
-    factors: Optional[List[Dict[str, Any]]] = None
+    factors: Optional[List[str]] = None
     recommendations: Optional[List[str]] = None
     model_version: Optional[str] = None
     created_at: datetime
@@ -354,6 +291,8 @@ class RiskPredictionRequest(BaseModel):
 
 
 class RiskPredictionResponse(BaseModel):
+    model_config = {"protected_namespaces": ()}
+
     score: int = Field(..., ge=0, le=100)
     risk_level: RiskLevel
     factors: List[Dict[str, Any]]

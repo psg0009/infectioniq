@@ -13,6 +13,7 @@ interface AppState {
   
   // Actions
   setActiveCases: (cases: SurgicalCase[]) => void
+  setAlerts: (alerts: Alert[]) => void
   addAlert: (alert: Alert) => void
   acknowledgeAlert: (id: string) => void
   setMetrics: (metrics: DashboardMetrics) => void
@@ -28,7 +29,9 @@ export const useAppStore = create<AppState>((set) => ({
   wsConnected: false,
 
   setActiveCases: (cases) => set({ activeCases: cases }),
-  
+
+  setAlerts: (alerts) => set({ alerts }),
+
   addAlert: (alert) => set((state) => ({
     alerts: [alert, ...state.alerts].slice(0, 50)
   })),

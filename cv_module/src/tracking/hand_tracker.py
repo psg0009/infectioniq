@@ -1,10 +1,11 @@
 """Hand Tracking using MediaPipe Tasks API"""
 import cv2
 import numpy as np
-from dataclasses import dataclass
 from typing import List, Tuple, Optional
 import logging
 import os
+
+from src.utils.types import HandLandmarks
 
 logger = logging.getLogger(__name__)
 
@@ -22,13 +23,6 @@ try:
         USE_LEGACY_API = True
 except ImportError:
     pass
-
-
-@dataclass
-class HandLandmarks:
-    landmarks: List[Tuple[float, float, float]]
-    handedness: str
-    confidence: float
 
 
 class HandTracker:

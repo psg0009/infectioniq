@@ -1,7 +1,19 @@
 import { useEffect, useState } from 'react'
-import { TrendingUp, TrendingDown, Calendar } from 'lucide-react'
-
-const API_URL = import.meta.env.VITE_API_URL || ''
+import { API_URL } from '../config'
+import { authHeaders } from '../utils/api'
+import Card from '../components/Card'
+import { TrendingUp, AlertTriangle, Users } from 'lucide-react'
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from 'recharts'
 
 export default function AnalyticsPage() {
   const [trends, setTrends] = useState<any[]>([])
@@ -16,8 +28,8 @@ export default function AnalyticsPage() {
   const fetchAnalytics = async () => {
     try {
       const [trendsRes, violationsRes] = await Promise.all([
-        fetch(`${API_URL}/api/v1/analytics/trends?days=${days}`),
-        fetch(`${API_URL}/api/v1/analytics/violations?days=${days}`)
+        fetch(`${API_URL}/api/v1/analytics/trends?days=${days}`, { headers: authHeaders() }),
+        fetch(`${API_URL}/api/v1/analytics/violations?days=${days}`, { headers: authHeaders() })
       ])
       if (trendsRes.ok) {
         const data = await trendsRes.json()
@@ -34,87 +46,192 @@ export default function AnalyticsPage() {
     }
   }
 
-  if (loading) return <div className="text-center py-12">Loading analytics...</div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex items-center gap-3 text-slate-400">
+          <div className="w-5 h-5 border-2 border-brand-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm">Loading analytics...</span>
+        </div>
+      </div>
+    )
+  }
 
-  const avgCompliance = trends.length > 0 
-    ? trends.reduce((acc, t) => acc + t.compliance_rate, 0) / trends.length 
+  const avgCompliance = trends.length > 0
+    ? trends.reduce((acc, t) => acc + t.compliance_rate, 0) / trends.length
     : 0
+
+  const totalEntries = trends.reduce((acc, t) => acc + t.total_entries, 0)
+  const totalViolations = violations.reduce((acc, v) => acc + v.count, 0)
+
+  const trendChartData = trends.map((t) => ({
+    date: new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    compliance: parseFloat((t.compliance_rate * 100).toFixed(1)),
+  }))
+
+  const violationChartData = violations.map((v) => ({
+    name: v.type.replace(/_/g, ' '),
+    count: v.count,
+    percentage: parseFloat(v.percentage.toFixed(1)),
+  }))
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Analytics</h1>
-        <select
-          value={days}
-          onChange={(e) => setDays(Number(e.target.value))}
-          className="px-4 py-2 border border-slate-300 rounded-lg bg-white"
-        >
-          <option value={7}>Last 7 days</option>
-          <option value={14}>Last 14 days</option>
-          <option value={30}>Last 30 days</option>
-        </select>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white dark:text-white">Analytics</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Compliance trends and violation analysis</p>
+        </div>
+        <div className="flex items-center gap-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-card dark:shadow-none p-1">
+          {[7, 14, 30].map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setDays(d)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                days === d
+                  ? 'bg-brand-600 text-white shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
+              }`}
+            >
+              {d}d
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Summary */}
+      {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <p className="text-sm text-slate-500">Average Compliance</p>
-          <p className="text-3xl font-bold text-slate-900 mt-1">
-            {(avgCompliance * 100).toFixed(1)}%
-          </p>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <p className="text-sm text-slate-500">Total Entries</p>
-          <p className="text-3xl font-bold text-slate-900 mt-1">
-            {trends.reduce((acc, t) => acc + t.total_entries, 0)}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <p className="text-sm text-slate-500">Total Violations</p>
-          <p className="text-3xl font-bold text-red-600 mt-1">
-            {violations.reduce((acc, v) => acc + v.count, 0)}
-          </p>
-        </div>
+        <Card hover>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-brand-50 ring-1 ring-brand-100 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-brand-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Avg Compliance</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">{(avgCompliance * 100).toFixed(1)}%</p>
+            </div>
+          </div>
+        </Card>
+        <Card hover>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 ring-1 ring-blue-100 flex items-center justify-center">
+              <Users className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Total Entries</p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white">{totalEntries}</p>
+            </div>
+          </div>
+        </Card>
+        <Card hover>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-red-50 ring-1 ring-red-100 flex items-center justify-center">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Total Violations</p>
+              <p className="text-2xl font-bold text-red-600">{totalViolations}</p>
+            </div>
+          </div>
+        </Card>
       </div>
 
       {/* Compliance Trend */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <h2 className="text-lg font-semibold mb-4">Compliance Trend</h2>
-        <div className="h-64 flex items-end gap-2">
-          {trends.map((t, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center">
-              <div 
-                className="w-full bg-blue-500 rounded-t"
-                style={{ height: `${t.compliance_rate * 100 * 2}px` }}
+      <Card>
+        <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-5">Compliance Trend</h2>
+        {trendChartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart data={trendChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="complianceFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#09c4ae" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#09c4ae" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                tickLine={false}
+                axisLine={{ stroke: '#f1f5f9' }}
               />
-              <p className="text-xs text-slate-500 mt-2 rotate-45 origin-left">
-                {new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
+              <YAxis
+                domain={[0, 100]}
+                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                tickLine={false}
+                axisLine={{ stroke: '#f1f5f9' }}
+                tickFormatter={(value: number) => `${value}%`}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#fff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  boxShadow: '0 4px 12px rgb(0 0 0 / 0.06)',
+                }}
+                formatter={(value: number) => [`${value}%`, 'Compliance']}
+              />
+              <Area
+                type="monotone"
+                dataKey="compliance"
+                stroke="#087e74"
+                strokeWidth={2.5}
+                fill="url(#complianceFill)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="text-sm text-slate-400 text-center py-12">No trend data available</p>
+        )}
+      </Card>
 
       {/* Top Violations */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <h2 className="text-lg font-semibold mb-4">Top Violation Types</h2>
-        <div className="space-y-3">
-          {violations.map((v, i) => (
-            <div key={i} className="flex items-center gap-4">
-              <div className="flex-1">
-                <p className="font-medium text-slate-900">{v.type.replace(/_/g, ' ')}</p>
-                <div className="h-2 bg-slate-100 rounded-full mt-1">
-                  <div 
-                    className="h-full bg-red-500 rounded-full"
-                    style={{ width: `${v.percentage}%` }}
-                  />
-                </div>
-              </div>
-              <span className="text-sm text-slate-500">{v.count} ({v.percentage.toFixed(1)}%)</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <Card>
+        <h2 className="text-base font-semibold text-slate-900 dark:text-white mb-5">Top Violation Types</h2>
+        {violationChartData.length > 0 ? (
+          <ResponsiveContainer width="100%" height={Math.max(200, violationChartData.length * 50)}>
+            <BarChart
+              data={violationChartData}
+              layout="vertical"
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+              <XAxis
+                type="number"
+                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                tickLine={false}
+                axisLine={{ stroke: '#f1f5f9' }}
+              />
+              <YAxis
+                type="category"
+                dataKey="name"
+                tick={{ fontSize: 11, fill: '#475569' }}
+                tickLine={false}
+                axisLine={{ stroke: '#f1f5f9' }}
+                width={140}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#fff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  boxShadow: '0 4px 12px rgb(0 0 0 / 0.06)',
+                }}
+                formatter={(value: number, _name: string, props: any) => [
+                  `${value} (${props.payload.percentage}%)`,
+                  'Violations',
+                ]}
+              />
+              <Bar dataKey="count" fill="#ef4444" radius={[0, 6, 6, 0]} barSize={22} />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="text-sm text-slate-400 text-center py-12">No violation data available</p>
+        )}
+      </Card>
     </div>
   )
 }

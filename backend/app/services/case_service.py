@@ -13,8 +13,9 @@ import logging
 from app.models import SurgicalCase, RiskScore, EntryExitEvent, TouchEvent, Alert
 from app.schemas import (
     CaseCreate, CaseUpdate, CaseResponse, CaseWithRiskResponse,
-    CaseComplianceResponse, RiskLevel, CaseStatus
+    CaseComplianceResponse
 )
+from app.core.enums import RiskLevel, CaseStatus
 from app.services.risk_service import RiskService
 from app.core.redis import RedisPubSub, RedisCache
 
@@ -27,10 +28,72 @@ class CaseService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.risk_service = RiskService(db)
-    
+
+    @staticmethod
+    def _build_case_with_risk_response(case: SurgicalCase) -> CaseWithRiskResponse:
+        """Build CaseWithRiskResponse from a SurgicalCase ORM object."""
+        risk_score_data = None
+        if case.risk_score:
+            # Normalize factors: predictor returns List[str], but legacy seed
+            # data may store a plain dict — convert to list of strings.
+            raw_factors = case.risk_score.factors
+            if isinstance(raw_factors, dict):
+                raw_factors = [f"{k}: {v}" for k, v in raw_factors.items()]
+            risk_score_data = {
+                "score": case.risk_score.score,
+                "risk_level": case.risk_score.risk_level,
+                "factors": raw_factors,
+                "recommendations": case.risk_score.recommendations,
+                "model_version": case.risk_score.model_version,
+                "created_at": case.risk_score.created_at
+            }
+
+        return CaseWithRiskResponse(
+            id=case.id,
+            or_number=case.or_number,
+            start_time=case.start_time,
+            end_time=case.end_time,
+            procedure_type=case.procedure_type,
+            procedure_code=case.procedure_code,
+            surgeon_id=case.surgeon_id,
+            team_id=case.team_id,
+            patient_id=case.patient_id,
+            wound_class=case.wound_class,
+            expected_duration_hrs=case.expected_duration_hrs,
+            actual_duration_hrs=case.actual_duration_hrs,
+            complexity_score=case.complexity_score,
+            implant_flag=case.implant_flag,
+            emergency_flag=case.emergency_flag,
+            status=case.status,
+            outcome=case.outcome,
+            created_at=case.created_at,
+            risk_score=risk_score_data
+        )
+
     async def create_case(self, case_data: CaseCreate) -> CaseWithRiskResponse:
         """Create a new surgical case and calculate risk score"""
-        
+        from app.models.models import GestureProfile
+
+        # Capture active gesture profile for this OR
+        profile_id = None
+        profile_result = await self.db.execute(
+            select(GestureProfile)
+            .where(GestureProfile.or_number == case_data.or_number)
+            .order_by(GestureProfile.version.desc())
+            .limit(1)
+        )
+        active_profile = profile_result.scalar_one_or_none()
+        if not active_profile:
+            profile_result = await self.db.execute(
+                select(GestureProfile)
+                .where(GestureProfile.is_default == True)
+                .order_by(GestureProfile.version.desc())
+                .limit(1)
+            )
+            active_profile = profile_result.scalar_one_or_none()
+        if active_profile:
+            profile_id = active_profile.id
+
         # Create the case
         case = SurgicalCase(
             or_number=case_data.or_number,
@@ -45,7 +108,8 @@ class CaseService:
             complexity_score=case_data.complexity_score,
             implant_flag=case_data.implant_flag,
             emergency_flag=case_data.emergency_flag,
-            status=CaseStatus.SCHEDULED
+            status=CaseStatus.SCHEDULED,
+            gesture_profile_id=profile_id,
         )
         
         self.db.add(case)
@@ -67,7 +131,15 @@ class CaseService:
         
         await self.db.commit()
         await self.db.refresh(case)
-        
+
+        # Re-query with risk_score relationship loaded
+        result = await self.db.execute(
+            select(SurgicalCase)
+            .options(selectinload(SurgicalCase.risk_score))
+            .where(SurgicalCase.id == case.id)
+        )
+        case = result.scalar_one()
+
         # Cache active case for the OR
         await RedisCache.set_active_case(case.or_number, {
             "case_id": str(case.id),
@@ -76,33 +148,10 @@ class CaseService:
             "status": case.status.value,
             "start_time": case.start_time.isoformat()
         })
-        
-        # Build response
-        response = CaseWithRiskResponse(
-            id=case.id,
-            or_number=case.or_number,
-            start_time=case.start_time,
-            end_time=case.end_time,
-            procedure_type=case.procedure_type,
-            procedure_code=case.procedure_code,
-            surgeon_id=case.surgeon_id,
-            team_id=case.team_id,
-            patient_id=case.patient_id,
-            wound_class=case.wound_class,
-            expected_duration_hrs=case.expected_duration_hrs,
-            actual_duration_hrs=case.actual_duration_hrs,
-            complexity_score=case.complexity_score,
-            implant_flag=case.implant_flag,
-            emergency_flag=case.emergency_flag,
-            status=case.status,
-            outcome=case.outcome,
-            created_at=case.created_at,
-            risk_score=risk_prediction
-        )
-        
+
         logger.info(f"Created case {case.id} with risk score {risk_prediction['score']}")
-        
-        return response
+
+        return self._build_case_with_risk_response(case)
     
     async def get_case(self, case_id: UUID) -> Optional[CaseWithRiskResponse]:
         """Get case by ID with risk score"""
@@ -116,39 +165,8 @@ class CaseService:
         
         if not case:
             return None
-        
-        risk_score_response = None
-        if case.risk_score:
-            risk_score_response = {
-                "score": case.risk_score.score,
-                "risk_level": case.risk_score.risk_level,
-                "factors": case.risk_score.factors,
-                "recommendations": case.risk_score.recommendations,
-                "model_version": case.risk_score.model_version,
-                "created_at": case.risk_score.created_at
-            }
-        
-        return CaseWithRiskResponse(
-            id=case.id,
-            or_number=case.or_number,
-            start_time=case.start_time,
-            end_time=case.end_time,
-            procedure_type=case.procedure_type,
-            procedure_code=case.procedure_code,
-            surgeon_id=case.surgeon_id,
-            team_id=case.team_id,
-            patient_id=case.patient_id,
-            wound_class=case.wound_class,
-            expected_duration_hrs=case.expected_duration_hrs,
-            actual_duration_hrs=case.actual_duration_hrs,
-            complexity_score=case.complexity_score,
-            implant_flag=case.implant_flag,
-            emergency_flag=case.emergency_flag,
-            status=case.status,
-            outcome=case.outcome,
-            created_at=case.created_at,
-            risk_score=risk_score_response
-        )
+
+        return self._build_case_with_risk_response(case)
     
     async def update_case(self, case_id: UUID, update_data: CaseUpdate) -> Optional[CaseResponse]:
         """Update a surgical case"""
@@ -187,37 +205,7 @@ class CaseService:
         )
         cases = result.scalars().all()
         
-        return [
-            CaseWithRiskResponse(
-                id=case.id,
-                or_number=case.or_number,
-                start_time=case.start_time,
-                end_time=case.end_time,
-                procedure_type=case.procedure_type,
-                procedure_code=case.procedure_code,
-                surgeon_id=case.surgeon_id,
-                team_id=case.team_id,
-                patient_id=case.patient_id,
-                wound_class=case.wound_class,
-                expected_duration_hrs=case.expected_duration_hrs,
-                actual_duration_hrs=case.actual_duration_hrs,
-                complexity_score=case.complexity_score,
-                implant_flag=case.implant_flag,
-                emergency_flag=case.emergency_flag,
-                status=case.status,
-                outcome=case.outcome,
-                created_at=case.created_at,
-                risk_score={
-                    "score": case.risk_score.score,
-                    "risk_level": case.risk_score.risk_level,
-                    "factors": case.risk_score.factors,
-                    "recommendations": case.risk_score.recommendations,
-                    "model_version": case.risk_score.model_version,
-                    "created_at": case.risk_score.created_at
-                } if case.risk_score else None
-            )
-            for case in cases
-        ]
+        return [self._build_case_with_risk_response(case) for case in cases]
     
     async def get_case_compliance(self, case_id: UUID) -> Optional[CaseComplianceResponse]:
         """Get compliance statistics for a case"""

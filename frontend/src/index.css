@@ -9,11 +9,20 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background-color: #f1f5f9;
+  background-color: #f8fafc;
+  color: #0f172a;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-.risk-low { color: #22c55e; }
-.risk-moderate { color: #eab308; }
+/* Dark mode body — html element gets the .dark class */
+html.dark body {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+
+/* ── Risk & state utility classes ─────────────────────── */
+.risk-low { color: #10b981; }
+.risk-moderate { color: #f59e0b; }
 .risk-high { color: #f97316; }
 .risk-critical { color: #ef4444; }
 
@@ -22,11 +31,56 @@ body {
 .state-contaminated { background-color: #fed7aa; color: #9a3412; }
 .state-dirty { background-color: #fecaca; color: #991b1b; }
 
+/* ── Alert pulse ──────────────────────────────────────── */
 @keyframes pulse-alert {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
-
 .alert-critical {
   animation: pulse-alert 1s infinite;
+}
+
+/* ── Page transition ──────────────────────────────────── */
+.page-enter {
+  animation: pageEnter 0.35s ease-out forwards;
+}
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Smooth transitions for dark mode ─────────────────── */
+/* Smooth theme transitions (only during theme toggle) */
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease, box-shadow 300ms ease !important;
+}
+
+/* ── Scrollbar styling ────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
